@@ -15,7 +15,7 @@ print(df_Bsrtc)
 #initialize the web driver
 driver=webdriver.Chrome()
 driver.maximize_window()
-
+#Create a empty list
 Route_Links= []
 Routes_Names = []
 Bus_names = []
@@ -26,7 +26,7 @@ star_Ratings = []
 Prices= []
 Seats_Available= []
 Bus_types= []
-
+## Loop through each route
 for i, r in df_Bsrtc.iterrows():
     links = r["Route_link"]
     routes = r["Route_name"]
