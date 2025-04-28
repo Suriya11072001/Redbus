@@ -137,13 +137,13 @@ elif page == "📊 Bus Filtering":
         
     ]
     # Apply Price Range Filter
-    if price_option == "0 - 1500":
-        filtered_df = filtered_df[(filtered_df['prices'] >= 1000) & (filtered_df['prices'] <= 1500)]
+    if price_option == "50 - 1500":
+        filtered_df = filtered_df[(filtered_df['prices'] >= 50) & (filtered_df['prices'] <= 1500)]
     elif price_option == "1600 - 2500":
         filtered_df = filtered_df[(filtered_df['prices'] >= 1600) & (filtered_df['prices'] <= 2500)]
     elif price_option == "2600 - 3000":
         filtered_df = filtered_df[(filtered_df['prices'] >= 2600) & (filtered_df['prices'] <= 3000)]
-    elif price_option == "Above 3000":
+    elif price_option == "3000 and Above":
         filtered_df = filtered_df[(filtered_df['prices'] > 3000)]
     # Display Filtered Results
     st.markdown(f"### Showing {len(filtered_df)} result(s)")
