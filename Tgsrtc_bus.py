@@ -1,110 +1,112 @@
 #importing libraries
-from selenium import webdriver
-from selenium.webdriver import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+import pandas as pd
 import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pandas as pd
 
-df_Tgsrtc=pd.read_csv('df_Tgsrtc.csv')
+# Read the CSV
+df_Tgsrtc = pd.read_csv('df_Tgsrtc.csv')
 print(df_Tgsrtc)
-#initialize the web driver
-driver=webdriver.Chrome()
+
+# Initialize the WebDriver
+driver = webdriver.Chrome()
 driver.maximize_window()
 
-Route_Links= []
+# Create empty lists
+Route_Links = []
 Routes_Names = []
-Bus_names = []
-Departingtime= []
-Total_Duration= []
-Boardingtime= []
-star_Ratings = []
-Prices= []
-Seats_Available= []
-Bus_types= []
+Bus_names_list = []
+Departingtime_list = []
+Total_Duration_list = []
+Boardingtime_list = []
+star_Ratings_list = []
+Prices_list = []
+Seats_Available_list = []
+Bus_types_list = []
 
-for i,r in df_Tgsrtc.iterrows():
-    links=r["Route_link"]
-    routes=r["Route_name"]
+# Loop through each route
+for i, r in df_Tgsrtc.iterrows():
+    links = r["Route_link"]
+    routes = r["Route_name"]
     driver.get(links)
-    time.sleep(5)
-    elements = driver.find_elements(By.XPATH, f"//a[contains(@href, '{links}')]")
-    for element in elements:
-        element.click()
-        time.sleep(6)
+    time.sleep(3)
+
+    # Try clicking "View Buses" if button is available
     try:
-       view_buses=driver.find_element(By.XPATH,'//div[@class="button"]')
-       view_buses.click()
-    except:
-        continue
-    time.sleep(10)       
-
-    
-    last_height=driver.execute_script("return document.body.scrollHeight")
-
-    while True:
-        driver.execute_script("window.scrollTo(0,document.body.scrollHeight);")
+        view_buses_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'button')]"))
+        )
+        view_buses_button.click()
+        
+        print(f"'View Buses' clicked for route: {routes}")
         time.sleep(5)
-        new_height=driver.execute_script("return document.body.scrollHeight")
-        if new_height==last_height:
-            break
-        last_height=new_height
-    
+    except Exception as e:
+        print(f"No 'View Buses' button for route: {routes}, proceeding...")
 
-#extract bus details
-    bus_names = driver.find_elements(By.XPATH, "//div[@class='travels lh-24 f-bold d-color']")   #each row with each index is iterated using the XPATH, 
-    bustype = driver.find_elements(By.XPATH, "//div[@class='bus-type f-12 m-top-16 l-color evBus']")  
-    dptime = driver.find_elements(By.XPATH, "//*[@class='dp-time f-19 d-color f-bold']")
-    bptime= driver.find_elements(By.XPATH, "//*[@class='bp-time f-19 d-color disp-Inline']")
-    dur= driver.find_elements(By.XPATH, "//*[@class='dur l-color lh-24']")
-    
-    #price= driver.find_elements(By.XPATH, '//div[@class="fare d-block"]//span')
-    #seat= driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
-
+    # Wait for buses to appear
     try:
-        rating = driver.find_elements(By.XPATH,"//div[@class='clearfix row-one']/div[@class='column-six p-right-10 w-10 fl']")
-    except:
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'travels')]"))
+        )
+    except Exception as e:
+        print(f"No buses found for route: {routes}")
         continue
-    price = driver.find_elements(By.XPATH, '//*[@class="fare d-block"]')
-    seats = driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
-    
- # Append data to respective lists
-    for bus in bus_names:
+
+    # Scroll to load all buses
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(3)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
+    # Now scrape data
+   # Now scrape data
+    bus_name_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'travels')]")
+    bustype_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'bus-type')]")
+    dptime_elements = driver.find_elements(By.CLASS_NAME, "dp-time.f-19.d-color.f-bold")
+    bptime_elements = driver.find_elements(By.CLASS_NAME, "bp-time.f-19.d-color.disp-Inline") 
+    dur_elements = driver.find_elements(By.CLASS_NAME, "dur.l-color.lh-24")
+    rating_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'rating-sec')]")
+    price_elements = driver.find_elements(By.XPATH, '//*[@class="fare d-block"]')
+    seats_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
+    buses_count = len(bus_name_elements)
+
+    # Append data safely
+    for j in range(buses_count):
         Route_Links.append(links)
         Routes_Names.append(routes)
-        Bus_names.append(bus.text)
-    for start_time in bptime:
-        Departingtime.append(start_time.text)
-    for duration in dur:
-        Total_Duration.append(duration.text)
-    for end_time in bptime:
-        Boardingtime.append(end_time.text)
-    for ratings in rating:
-        star_Ratings.append(ratings.text)
-    for ticket_price in price:
-        Prices.append(ticket_price.text)
-    for seats in seats:
-        Seats_Available.append(seats.text)
-    for bus_type in bustype:
-        Bus_types.append(bus_type.text)
-        
-print("succesfully completed")
+        Bus_names_list.append(bus_name_elements[j].text if j < len(bus_name_elements) else '')
+        Departingtime_list.append(dptime_elements[j].text if j < len(dptime_elements) else '')
+        Total_Duration_list.append(dur_elements[j].text if j < len(dur_elements) else '')
+        Boardingtime_list.append(bptime_elements[j].text if j < len(bptime_elements) else '')
+        star_Ratings_list.append(rating_elements[j].text if j < len(rating_elements) else '')
+        Prices_list.append(price_elements[j].text if j < len(price_elements) else '')
+        Seats_Available_list.append(seats_elements[j].text if j < len(seats_elements) else '')
+        Bus_types_list.append(bustype_elements[j].text if j < len(bustype_elements) else '')
+
+print("✅ Scraping Successfully Completed!")
+
+# Create final DataFrame
 bus_details = {
-    'Route_Link':Route_Links,
-    'Route_Name':Routes_Names,
-    'Bus_names':Bus_names, 
-    'dapartingtime':Departingtime, 
-    'Total_duration':Total_Duration,
-    'Boardingtime':Boardingtime,
-    'Star_Ratings':star_Ratings,
-    'prices':Prices,
-    'Seats_Available':Seats_Available,
-    'Bus_typse':Bus_types,
+    'Route_Link': Route_Links,
+    'Route_Name': Routes_Names,
+    'Bus_names': Bus_names_list,
+    'Departingtime': Departingtime_list,
+    'Total_duration': Total_Duration_list,
+    'Boardingtime': Boardingtime_list,
+    'Star_Ratings': star_Ratings_list,
+    'Prices': Prices_list,
+    'Seats_Available': Seats_Available_list,
+    'Bus_type': Bus_types_list,
 }
-df_Tgsrtc_1=pd.DataFrame(bus_details)
-df_Tgsrtc_1.to_csv("df_Tgsrtc_1.csv",index=False)
+
+df_Tgsrtc_1 = pd.DataFrame(bus_details)
+
+# Save the DataFrame
+df_Tgsrtc_1.to_csv("df_Tgsrtc_1.csv", index=False)
 print(df_Tgsrtc_1)
