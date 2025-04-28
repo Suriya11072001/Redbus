@@ -9,7 +9,7 @@ import time
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
-
+# read the csv file
 df_Bsrtc=pd.read_csv('df_Bsrtc.csv')
 print(df_Bsrtc)
 #initialize the web driver
@@ -27,84 +27,71 @@ Prices= []
 Seats_Available= []
 Bus_types= []
 
-for i,r in df_Bsrtc.iterrows():
-    links=r["Route_link"]
-    routes=r["Route_name"]
+for i, r in df_Bsrtc.iterrows():
+    links = r["Route_link"]
+    routes = r["Route_name"]
     driver.get(links)
-    time.sleep(5)
-    elements = driver.find_elements(By.XPATH, f"//a[contains(@href, '{links}')]")
-    for element in elements:
-        element.click()
-        time.sleep(6)
-    try:
-       view_buses=driver.find_element(By.XPATH,'//div[@class="button"]')
-       view_buses.click()
-    except:
-        continue
-    time.sleep(10)       
-
     
-    last_height=driver.execute_script("return document.body.scrollHeight")
-
+    try:
+        # Wait until bus list is present
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'travels')]"))
+        )
+    except Exception as e:
+        print(f"Failed to load page {links}: {e}")
+        continue
+    
+    time.sleep(5)  # give extra time just in case
+    
+    # Scroll page fully
+    last_height = driver.execute_script("return document.body.scrollHeight")
     while True:
         driver.execute_script("window.scrollTo(0,document.body.scrollHeight);")
-        time.sleep(5)
-        new_height=driver.execute_script("return document.body.scrollHeight")
-        if new_height==last_height:
+        time.sleep(3)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
             break
-        last_height=new_height
-    
+        last_height = new_height
 
-#extract bus details
-    bus_names = driver.find_elements(By.XPATH, "//div[@class='travels lh-24 f-bold d-color']")   #each row with each index is iterated using the XPATH, 
-    bustype = driver.find_elements(By.XPATH, "//div[@class='bus-type f-12 m-top-16 l-color evBus']")  
-    dptime = driver.find_elements(By.XPATH, "//*[@class='dp-time f-19 d-color f-bold']")
-    bptime= driver.find_elements(By.XPATH, "//*[@class='bp-time f-19 d-color disp-Inline']")
-    dur= driver.find_elements(By.XPATH, "//*[@class='dur l-color lh-24']")
+    # Now scrape data
+    bus_name_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'travels')]")
+    bustype_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'bus-type')]")
+    dptime_elements = driver.find_elements(By.CLASS_NAME, "dp-time.f-19.d-color.f-bold")
+    bptime_elements = driver.find_elements(By.CLASS_NAME, "bp-time.f-19.d-color.disp-Inline") 
+    dur_elements = driver.find_elements(By.CLASS_NAME, "dur.l-color.lh-24")
+    rating_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'rating-sec')]")
+    price_elements = driver.find_elements(By.XPATH, '//*[@class="fare d-block"]')
+    seats_elements = driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
     
-    #price= driver.find_elements(By.XPATH, '//div[@class="fare d-block"]//span')
-    #seat= driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
+    buses_count = len(bus_name_elements)  # total buses found
 
-    try:
-        rating = driver.find_elements(By.XPATH,"//div[@class='clearfix row-one']/div[@class='column-six p-right-10 w-10 fl']")
-    except:
-        continue
-    price = driver.find_elements(By.XPATH, '//*[@class="fare d-block"]')
-    seats = driver.find_elements(By.XPATH, "//div[contains(@class, 'seat-left')]")
-    
- # Append data to respective lists
-    for bus in bus_names:
+    for j in range(buses_count):
         Route_Links.append(links)
         Routes_Names.append(routes)
-        Bus_names.append(bus.text)
-    for start_time in bptime:
-        Departingtime.append(start_time.text)
-    for duration in dur:
-        Total_Duration.append(duration.text)
-    for end_time in bptime:
-        Boardingtime.append(end_time.text)
-    for ratings in rating:
-        star_Ratings.append(ratings.text)
-    for ticket_price in price:
-        Prices.append(ticket_price.text)
-    for seats in seats:
-        Seats_Available.append(seats.text)
-    for bus_type in bustype:
-        Bus_types.append(bus_type.text)
-        
-print("succesfully completed")
+        Bus_names.append(bus_name_elements[j].text if j < len(bus_name_elements) else '')
+        Departingtime.append(dptime_elements[j].text if j < len(dptime_elements) else '')
+        Total_Duration.append(dur_elements[j].text if j < len(dur_elements) else '')
+        Boardingtime.append(bptime_elements[j].text if j < len(bptime_elements) else '')
+        star_Ratings.append(rating_elements[j].text if j < len(rating_elements) else '')
+        Prices.append(price_elements[j].text if j < len(price_elements) else '')
+        Seats_Available.append(seats_elements[j].text if j < len(seats_elements) else '')
+        Bus_types.append(bustype_elements[j].text if j < len(bustype_elements) else '')
+
+print("Successfully completed scraping!")
+
+# Create DataFrame
 bus_details = {
-    'Route_Link':Route_Links,
-    'Route_Name':Routes_Names,
-    'Bus_names':Bus_names, 
-    'dapartingtime':Departingtime, 
-    'Total_duration':Total_Duration,
-    'Boardingtime':Boardingtime,
-    'Star_Ratings':star_Ratings,
-    'prices':Prices,
-    'Seats_Available':Seats_Available,
-    'Bus_typse':Bus_types,
+    'Route_Link': Route_Links,
+    'Route_Name': Routes_Names,
+    'Bus_names': Bus_names,
+    'Departingtime': Departingtime,
+    'Total_duration': Total_Duration,
+    'Boardingtime': Boardingtime,
+    'Star_Ratings': star_Ratings,
+    'Prices': Prices,
+    'Seats_Available': Seats_Available,
+    'Bus_type': Bus_types,
 }
-df_Bsrtc_1=pd.DataFrame(bus_details)
-df_Bsrtc_1.to_csv("df_Bsrtc_1.csv",index=False)
+df_Bsrtc_1 = pd.DataFrame(bus_details)
+df_Bsrtc_1.to_csv("df_Bsrtc_1.csv", index=False)
 print(df_Bsrtc_1)
